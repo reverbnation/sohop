@@ -43,6 +43,13 @@ type Config struct {
 	// It is overridden by the values from the AcmeWrapper if Acme is used.
 	TLS TLSConfig
 
+	// Certificates contains one or more certificate chains to present to
+	// the other side of the connection. Server configurations must include
+	// at least one certificate or else set GetCertificate. Clients doing
+	// client-authentication may set either Certificates or
+	// GetClientCertificate.
+	Certificates []tls.Certificate
+
 	// Acme configures automatic provisioning and renewal of TLS certificates
 	// using the ACME protocol.
 	Acme *acme.Config
@@ -75,6 +82,9 @@ type TLSConfig struct {
 	// CertKey is a path to the unencrypted PEM-encoded private key for the
 	// server certificate.
 	CertKey string
+
+	//  MinVersion: tls.VersionTLS12
+	MinVersion uint16
 }
 
 // A Server is an OAuth-authenticating reverse proxy.
@@ -122,25 +132,30 @@ func (s Server) Run() {
 		check(err)
 	}
 	go func() {
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS11,
+			NextProtos: []string{"h2"},
+		}
 		if m == nil {
 			s.Config.checkTLS()
-			err = http.ListenAndServeTLS(s.HTTPSAddr, s.Config.TLS.CertFile, s.Config.TLS.CertKey, s.handler())
+
+			s.Config.Certificates = make([]tls.Certificate, 1)
+
+			s.Config.Certificates[0], err = tls.LoadX509KeyPair(s.Config.TLS.CertFile, s.Config.TLS.CertKey)
 			check(err)
+
+			tlsConfig.Certificates = s.Config.Certificates
 		} else {
-			tlsConfig := &tls.Config{
-				GetCertificate: m.GetCertificate,
-				NextProtos:     []string{"h2"},
-			}
-
-			server := &http.Server{
-				Addr:      s.HTTPSAddr,
-				Handler:   s.handler(),
-				TLSConfig: tlsConfig,
-			}
-
-			err = server.ListenAndServeTLS("", "")
-			check(err)
+			tlsConfig.GetCertificate = m.GetCertificate
 		}
+		server := &http.Server{
+			Addr:      s.HTTPSAddr,
+			Handler:   s.handler(),
+			TLSConfig: tlsConfig,
+		}
+
+		err = server.ListenAndServeTLS("", "")
+		check(err)
 
 	}()
 	go func() {
