@@ -1,4 +1,4 @@
-FROM alpine:3.4
+FROM alpine:3.10
 MAINTAINER Dave Jack <davars@gmail.com>
 
 RUN apk add --no-cache libcap su-exec
