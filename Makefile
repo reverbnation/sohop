@@ -6,7 +6,7 @@ TAG=$(shell git rev-parse --short HEAD)
 ROOT=$(shell git rev-parse --show-toplevel)
 PACKAGE_DIR=$(ROOT)/package
 SRC_VOLUME="$(ROOT)":/go/src/github.com/davars/sohop
-IMAGE=golang:1.13.5-alpine3.10
+IMAGE=golang:1.12-alpine3.10
 
 all: build push
 
