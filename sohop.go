@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"math"
@@ -241,19 +240,6 @@ func (c *Config) auther() auth.Auther {
 	return a
 }
 
-var authorizedTemplate = template.Must(template.New("").Parse(`
-<!DOCTYPE html>
-<html>
-	<head>
-	<meta charset="UTF-8">
-	<title>Authorized</title>
-	</head>
-	<body>
-		<p>Authorized.  Continue to <a href="{{.}}">{{.}}</a>?</p>
-	</body>
-</html>
-`))
-
 func (s Server) handler() http.Handler {
 	router := mux.NewRouter()
 	router.NotFoundHandler = http.HandlerFunc(notFound)
@@ -280,7 +266,7 @@ func (s Server) handler() http.Handler {
 
 	oauthRouter.Path("/signin").Queries("rd", "{rd}").Handler(authenticating(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rd := mux.Vars(r)["rd"]
-		authorizedTemplate.Execute(w, rd)
+		http.Redirect(w, r, rd, http.StatusFound)
 	})))
 
 	healthRouter := router.Host(fmt.Sprintf("health.%s", conf.Domain)).Subrouter()
